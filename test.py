@@ -1,5 +1,6 @@
-import numpy as np
+import subprocess
 
-x = np.array([[1,2,3],[2,3,4]])
+path_to_main = 'main.py'
 
-print(x.flatten())
+with open("example_input.txt", "r") as infile:
+    subprocess.run(['python3', path_to_main], stdin=infile)

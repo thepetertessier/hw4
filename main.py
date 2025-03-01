@@ -1,7 +1,7 @@
 from scipy.optimize import linprog
 import numpy as np
 
-DEBUG = False
+DEBUG = True
 
 def debug(msg):
     if DEBUG:
@@ -17,10 +17,10 @@ class ConstraintBuilder:
 
     def add_constraint(self, a, b_i, equality=False):
         '''Add the constraint a*x <= b_i, or == when equality is True'''
-        self.A.append(a.flatten())
+        self.A.append(list(a.flatten()))
         self.b.append(b_i)
         if equality:
-            self.A.append(-a.flatten())
+            self.A.append(list(-a.flatten()))
             self.b.append(-b_i)
     
     def get_A(self):
@@ -70,6 +70,7 @@ def main():
         capacity[(src, dst)] = cap
 
     A, b = make_constraints(capacity, factory, warehouse, demand, node_count, product_count)
+    # debug(f'{b}')
 
     # The objective function doesn't matter - we're only interested in if the constraints can be met
     c = [0]*node_count*node_count*product_count
