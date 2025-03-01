@@ -31,20 +31,25 @@ class ConstraintBuilder:
 
 def make_constraints(capacity: dict, factory: list, warehouse: list, demand: list, node_count, product_count):
     lp = ConstraintBuilder()
+
+    # The cumulative flow can never exceed any edge's capacity
     for u, v in capacity.keys():
+        # f_0uv + f_1uv + ... <= capacity(u,v)
         a = new_a(product_count, node_count)
         for i in range(product_count):
             a[i][u][v] = 1
         lp.add_constraint(a, capacity[(u,v)])
     
+    # Conservation of flow: For each product, for each node, the incoming flow must equal the outgoing flow
     for i in range(product_count):
         for w in range(node_count):
             a = new_a(product_count, node_count)
             for u, v in capacity.keys():
                 a[i][u][w] = 1
-                a[i][w][v] = 1
+                a[i][w][v] = -1
             lp.add_constraint(a, 0, equality=True)
         
+        # There must be "demand" amount of flow going from each product's factory to warehouse
         a = new_a(product_count, node_count)
         a[i][factory[i]][warehouse[i]] = 1
         lp.add_constraint(a, demand[i], equality=True)
@@ -59,9 +64,9 @@ def main():
     warehouse = []
     demand = []
     for _ in range(product_count):
-        factory_index, warehouse_index, demand_i = [int(x) for x in input().strip().split()]
-        factory.append(factory_index)
-        warehouse.append(warehouse_index)
+        factory_i, warehouse_i, demand_i = [int(x) for x in input().strip().split()]
+        factory.append(factory_i)
+        warehouse.append(warehouse_i)
         demand.append(demand_i)
 
     capacity = {}
