@@ -56,9 +56,12 @@ def make_constraints(capacity: dict, factory: list, warehouse: list, demand: lis
     
     return lp.get_A(), lp.get_b()
 
-
-def main():
+def get_answer():
     node_count, edge_count, product_count = [int(x) for x in input().strip().split()]
+
+    # debug(f'node_count, edge_count, product_count: {(node_count, edge_count, product_count)}')
+    if not (product_count and edge_count):
+        return 'Yes'
     
     factory = []
     warehouse = []
@@ -81,7 +84,10 @@ def main():
     c = [0]*node_count*node_count*product_count
 
     result = linprog(c, A_ub=A, b_ub=b)
-    print('Yes' if result.success else 'No')
+    return 'Yes' if result.success else 'No'
+
+def main():
+    print(get_answer())
 
 
 if __name__ == '__main__':
