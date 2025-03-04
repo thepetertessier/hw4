@@ -60,7 +60,7 @@ def get_answer():
     node_count, edge_count, product_count = [int(x) for x in input().strip().split()]
 
     # debug(f'node_count, edge_count, product_count: {(node_count, edge_count, product_count)}')
-    if not (product_count and edge_count):
+    if not product_count:
         return 'Yes'
     
     factory = []
