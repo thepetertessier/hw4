@@ -105,9 +105,8 @@ def get_answer():
     factory = []
     warehouse = []
     demand = []
-    # capacity = {(u,v):0 for u in range(node_count) for v in range(node_count) if u != v}
+    capacity = {(u,v):0 for u in range(node_count) for v in range(node_count) if u != v}
     outgoing = incoming = {u: [] for u in range(node_count)}
-    capacity = {}
 
     for _ in range(product_count):
         factory_i, warehouse_i, demand_i = [int(x) for x in input().strip().split()]
