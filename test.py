@@ -1,8 +1,9 @@
 import subprocess
 from pathlib import Path
 from termcolor import colored
+import sys
 
-path_to_main = 'main.py'
+path_to_main = 'min.py' if sys.argv[1] == 'min' else 'main.py'
 
 input_dir = Path('input')
 header = f'{"Test Name":<20} | {"Expected":<8} | {"Actual":<8} | Result'
