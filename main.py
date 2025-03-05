@@ -173,9 +173,9 @@ def get_answer():
     A, b = make_constraints(capacity, outgoing, incoming, factory, warehouse, demand, node_count, product_count)
 
     # The objective function doesn't matter - we're only interested in if the constraints can be met
-    c = [1]*node_count*node_count*product_count
+    c = np.ones(product_count * node_count * node_count)
 
-    result = linprog(c, A_ub=A.toarray(), b_ub=b)
+    result = linprog(c, A_ub=A, b_ub=b)
     debug(format_linprog_result(result, node_count, product_count))
     return 'Yes' if result.success else 'No'
 
