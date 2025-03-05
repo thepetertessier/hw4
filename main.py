@@ -1,7 +1,7 @@
 from scipy.optimize import linprog
 import numpy as np
 
-DEBUG = True
+DEBUG = False
 
 def debug(msg):
     if DEBUG:
