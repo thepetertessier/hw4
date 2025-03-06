@@ -1,6 +1,7 @@
 from scipy.optimize import linprog
 from scipy.sparse import lil_matrix, csr_matrix, vstack
 import numpy as np
+from collections import defaultdict
 
 def reverse_flatten(x, node_count, product_count):
     return x.reshape((product_count, node_count, node_count))
@@ -25,19 +26,19 @@ class ConstraintBuilder:
     def __init__(self, p, n):
         self.p = p
         self.n = n
-        self.A = lil_matrix((0, p*n*n))
+        self.rows = []
         self.b = []
 
     def add_constraint(self, new_row: csr_matrix, b_i, equality=False):
         '''Add the constraint a*x <= b_i, or == when equality is True'''
-        self.A = vstack([self.A, new_row])
+        self.rows.append(new_row)
         self.b.append(b_i)
         if equality:
-            self.A = vstack([self.A, -new_row])
+            self.rows.append(-new_row)
             self.b.append(-b_i)
     
     def get_A(self):
-        return self.A.tocsr()
+        return vstack(self.rows).tocsr()
     
     def get_b(self):
         return self.b
@@ -58,7 +59,6 @@ class ConstraintAdder:
     def __exit__(self, exc_type, exc_value, traceback):
         new_row = self.constraint.get()
         self.cb.add_constraint(new_row, self.b_i, equality=self.equality)
-        sign = '==' if self.equality else '<='
         return False
 
 def make_constraints(capacity: dict, outgoing: dict, incoming: dict, factory: list, warehouse: list, demand: list, node_count, product_count):
@@ -108,7 +108,7 @@ def get_answer():
     warehouse = []
     demand = []
     capacity = {(u,v):0 for u in range(node_count) for v in range(node_count) if u != v}
-    outgoing = incoming = {u: [] for u in range(node_count)}
+    outgoing = incoming = defaultdict(list)
 
     for _ in range(product_count):
         factory_i, warehouse_i, demand_i = [int(x) for x in input().strip().split()]
