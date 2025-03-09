@@ -183,6 +183,57 @@ def get_answer():
 def main():
     print(get_answer())
 
+import multiprocessing
+import sys
+import io
 
-if __name__ == '__main__':
-    main()
+def worker(input_data, conn):
+    """ Runs get_answer() with piped input and sends the result back. """
+    sys.stdin = io.StringIO(input_data)  # Redirect stdin to use the piped input
+    try:
+        from min import get_answer  # Import get_answer from your script
+        conn.send(get_answer())  # Send result back to the parent process
+    except Exception as e:
+        conn.send(f"Error: {e}")
+    finally:
+        conn.close()
+
+def run_with_timeout():
+    input_data = sys.stdin.read()  # Read all input before forking
+    parent_conn, child_conn = multiprocessing.Pipe()  # Create a communication pipe
+
+    process = multiprocessing.Process(target=worker, args=(input_data, child_conn))
+    process.start()
+    process.join(timeout=50)  # Wait up to 50 seconds
+
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        print("No")
+    else:
+        if parent_conn.poll():  # Check if there's data in the pipe
+            print(parent_conn.recv())  # Print the output from get_answer()
+        else:
+            print("Error: No response from process")
+
+if __name__ == "__main__":
+    run_with_timeout()
+
+
+# import multiprocessing
+# import sys
+
+# def run_with_timeout():
+#     input_data = sys.stdin.read()  # Read all input before forking
+
+#     process = multiprocessing.Process(target=main, args=(input_data,))
+#     process.start()
+#     process.join(timeout=50)  # Wait up to 50 seconds
+    
+#     if process.is_alive():
+#         process.terminate()
+#         process.join()
+#         print("No")
+
+# if __name__ == '__main__':
+#     run_with_timeout()
