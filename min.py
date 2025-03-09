@@ -1,5 +1,5 @@
 from scipy.optimize import linprog
-from scipy.sparse import lil_matrix
+from scipy.sparse import csr_matrix
 from collections import defaultdict
 import numpy as np
 
@@ -58,27 +58,33 @@ class ConstraintBuilder:
     def __init__(self, p, n, e):
         self.p = p
         self.n = n
-        row_count = e + p*(2*n + 4)
-        self.A = lil_matrix((row_count, p*n*n))
-        self.b = np.zeros(row_count)
+        # self.row_count = e + p*(2*n + 4)
+        self.data = []
+        self.row_indices = []
+        self.col_indices = []
+        self.b = []
         self.i_row = 0
     
     def update_row(self, i, u, v, val, equality=False):
         index = get_index(i, u, v, self.n)
-        self.A[self.i_row, index] = val
+        self.data.append(val)
+        self.row_indices.append(self.i_row)
+        self.col_indices.append(index)
         if equality:
-            self.A[self.i_row + 1, index] = -val
+            self.data.append(-val)
+            self.row_indices.append(self.i_row+1)
+            self.col_indices.append(index)
 
     def commit_constraint(self, b_i, equality=False, description=''):
-        self.b[self.i_row] = b_i
+        self.b.append(b_i)
         if equality:
-            self.b[self.i_row + 1] = -b_i
+            self.b.append(-b_i)
         # debug(f"[Constraint] {description:<15}: {format_constraint(self.p, self.n, self.A, self.i_row)} {'==' if equality else '<='} {b_i}")
         self.i_row += 2 if equality else 1
 
     def get_A(self):
         # debug(f'Raw A:\n{self.A.toarray()}')
-        return self.A.tocsr()
+        return csr_matrix((self.data, (self.row_indices, self.col_indices)), shape=(len(self.b), self.p*self.n**2))
     
     def get_b(self):
         # debug(f'Raw b: {self.b}')
