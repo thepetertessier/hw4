@@ -1,5 +1,5 @@
 from scipy.optimize import linprog
-from scipy.sparse import lil_matrix
+from scipy.sparse import coo_matrix
 from collections import defaultdict
 import numpy as np
 
@@ -59,7 +59,7 @@ class ConstraintBuilder:
         self.p = p
         self.n = n
         row_count = e + p*(2*n + 4)
-        self.A = lil_matrix((row_count, p*n*n))
+        self.A = coo_matrix((row_count, p*n*n))
         self.b = np.zeros(row_count)
         self.i_row = 0
     
