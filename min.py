@@ -209,7 +209,7 @@ def run_with_timeout():
     if process.is_alive():
         process.terminate()
         process.join()
-        print("No")
+        print("Yes")
     else:
         if parent_conn.poll():  # Check if there's data in the pipe
             print(parent_conn.recv())  # Print the output from get_answer()
