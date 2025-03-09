@@ -1,5 +1,6 @@
 from scipy.optimize import linprog
-from scipy.sparse import lil_matrix, csr_matrix, vstack
+from scipy.sparse import csr_matrix
+from collections import defaultdict
 import numpy as np
 
 DEBUG = False
@@ -38,32 +39,6 @@ def format_linprog_result(res, node_count, product_count):
 
     return "\n".join(output)
 
-class Constraint:
-    def __init__(self, p, n):
-        self.p = p
-        self.n = n
-        self.data = lil_matrix((1, p*n*n))
-    
-    def _get_index(self, i, u, v):
-        n = self.n
-        return i*n*n + n*u + v
-
-    def update(self, i, u, v, val):
-        self.data[0, self._get_index(i, u, v)] = val
-    
-    def get(self):
-        return self.data.tocsr()
-    
-    def __str__(self) -> str:
-        output = []
-        for i in range(self.p):
-            for u in range(self.n):
-                for v in range(self.n):
-                    f = self.data[0, self._get_index(i, u, v)]
-                    if not f == 0:
-                        prefix = '-' if f < 0 else '+'
-                        output.append(f' {prefix} f{i}{u}{v}')
-        return ''.join(output)
 
 class ConstraintBuilder:
     def __init__(self, p, n):
@@ -155,7 +130,7 @@ def get_answer():
     warehouse = []
     demand = []
     capacity = {(u,v):0 for u in range(node_count) for v in range(node_count) if u != v}
-    outgoing = incoming = {u: [] for u in range(node_count)}
+    outgoing = incoming = defaultdict(list)
 
     for _ in range(product_count):
         factory_i, warehouse_i, demand_i = [int(x) for x in input().strip().split()]

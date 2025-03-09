@@ -1,46 +1,87 @@
 from scipy.optimize import linprog
-from scipy.sparse import lil_matrix, csr_matrix, vstack
-import numpy as np
+from scipy.sparse import lil_matrix
 from collections import defaultdict
+import numpy as np
+
+DEBUG = False
+
+def debug(msg):
+    if DEBUG:
+        print(msg)
+
+def get_index(i, u, v, n):
+    return i*n*n + n*u + v
 
 def reverse_flatten(x, node_count, product_count):
     return x.reshape((product_count, node_count, node_count))
 
-class Constraint:
-    def __init__(self, p, n):
-        self.p = p
-        self.n = n
-        self.data = lil_matrix((1, p*n*n))
-    
-    def _get_index(self, i, u, v):
-        n = self.n
-        return i*n*n + n*u + v
+def format_constraint(p, n, A, i_row):
+    output = []
+    for i in range(p):
+        for u in range(n):
+            for v in range(n):
+                f = A[i_row, get_index(i, u, v, n)]
+                if not f == 0:
+                    prefix = '-' if f < 0 else '+'
+                    output.append(f' {prefix} f{i}{u}{v}')
+    return ''.join(output)
 
-    def update(self, i, u, v, val):
-        self.data[0, self._get_index(i, u, v)] = val
-    
-    def get(self):
-        return self.data.tocsr()
+def format_flow(flow, p, n) -> list[str]:
+    output = []
+    for i in range(p):
+        for u in range(n):
+            for v in range(n):
+                f = flow[i][u][v]
+                if not f == 0:
+                    output.append(f' flow[{i}] [{u}][{v}] = {f}')
+        output.append('\n')
+    return output
+
+def format_linprog_result(res, node_count, product_count):
+    output = []
+    output.append(f"Success: {res.success}")
+    output.append(f"Message: {res.message}")
+
+    if res.success:
+        output.append(f"Optimal Objective Value: {res.fun}")
+        flow = reverse_flatten(np.array(res.x), node_count, product_count)
+        output.append(f'Raw Flow:\n{flow}')
+        output.append("Formatted Flow:")
+        output.extend(format_flow(flow, product_count, node_count))
+    else:
+        output.append("No optimal solution found.")
+
+    return "\n".join(output)
+
 
 class ConstraintBuilder:
-    def __init__(self, p, n):
+    def __init__(self, p, n, e):
         self.p = p
         self.n = n
-        self.rows = []
-        self.b = []
-
-    def add_constraint(self, new_row: csr_matrix, b_i, equality=False):
-        '''Add the constraint a*x <= b_i, or == when equality is True'''
-        self.rows.append(new_row)
-        self.b.append(b_i)
-        if equality:
-            self.rows.append(-new_row)
-            self.b.append(-b_i)
+        row_count = e + p*(2*n + 4)
+        self.A = lil_matrix((row_count, p*n*n))
+        self.b = np.zeros(row_count)
+        self.i_row = 0
     
+    def update_row(self, i, u, v, val, equality=False):
+        index = get_index(i, u, v, self.n)
+        self.A[self.i_row, index] = val
+        if equality:
+            self.A[self.i_row + 1, index] = -val
+
+    def commit_constraint(self, b_i, equality=False, description=''):
+        self.b[self.i_row] = b_i
+        if equality:
+            self.b[self.i_row + 1] = -b_i
+        # debug(f"[Constraint] {description:<15}: {format_constraint(self.p, self.n, self.A, self.i_row)} {'==' if equality else '<='} {b_i}")
+        self.i_row += 2 if equality else 1
+
     def get_A(self):
-        return vstack(self.rows).tocsr()
+        # debug(f'Raw A:\n{self.A.toarray()}')
+        return self.A.tocsr()
     
     def get_b(self):
+        # debug(f'Raw b: {self.b}')
         return self.b
     
 class ConstraintAdder:
@@ -50,19 +91,20 @@ class ConstraintAdder:
         self.cb = cb
         self.b_i = b_i
         self.equality = equality
-        self.constraint = Constraint(self.p, self.n)
         self.description = description
 
     def __enter__(self):
-        return self.constraint
+        return self
+    
+    def update(self, i, u, v, val):
+        self.cb.update_row(i, u, v, val, equality=self.equality)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        new_row = self.constraint.get()
-        self.cb.add_constraint(new_row, self.b_i, equality=self.equality)
+        self.cb.commit_constraint(self.b_i, equality=self.equality, description=self.description)
         return False
 
 def make_constraints(capacity: dict, outgoing: dict, incoming: dict, factory: list, warehouse: list, demand: list, node_count, product_count):
-    cb = ConstraintBuilder(product_count, node_count)
+    cb = ConstraintBuilder(product_count, node_count, len(capacity))
 
     # The cumulative flow can never exceed any edge's capacity
     for pair, cap in capacity.items():
@@ -121,6 +163,7 @@ def get_answer():
         capacity[(src, dst)] = cap
         outgoing[src].append(dst)
         incoming[dst].append(src)
+        # debug(f' {src}--{cap}->{dst}')
 
     A, b = make_constraints(capacity, outgoing, incoming, factory, warehouse, demand, node_count, product_count)
 
@@ -128,6 +171,7 @@ def get_answer():
     c = np.ones(product_count * node_count * node_count)
 
     result = linprog(c, A_ub=A, b_ub=b)
+    # debug(format_linprog_result(result, node_count, product_count))
     return 'Yes' if result.success else 'No'
 
 def main():

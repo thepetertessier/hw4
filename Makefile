@@ -1,5 +1,5 @@
 all:
-	echo "No need to compile!"
+	echo "1 0 0" | python3 min.py
 
 run:
 	python3 min.py
